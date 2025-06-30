@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"gemini-files/cmd/ui-kit/uikit"
 	"image"
 	"log"
 	"os"
 	"time"
+	"uikit/uikit"
 
 	"gioui.org/app"
 	"gioui.org/layout"
@@ -155,30 +155,35 @@ func (a *App) Layout(gtx layout.Context) layout.Dimensions {
 	// Use all available space
 	gtx.Constraints.Min = gtx.Constraints.Max
 
-	// Main layout with header, tabs, and content
 	return layout.Flex{
 		Axis:    layout.Vertical,
-		Spacing: layout.Spacing(0), // No spacing between header, tabs, and content
+		Spacing: layout.SpaceBetween,
 	}.Layout(gtx,
-		// Header section with fixed height
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints = layout.Exact(image.Pt(gtx.Constraints.Max.X, gtx.Dp(80)))
-			return a.renderHeader(gtx)
+			// Header with exact height
+			return layout.Stack{}.Layout(gtx,
+				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+					gtx.Constraints = layout.Exact(image.Pt(gtx.Constraints.Max.X, gtx.Dp(100)))
+					return a.renderHeader(gtx)
+				}),
+			)
 		}),
-		// Tabs section with fixed height
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints = layout.Exact(image.Pt(gtx.Constraints.Max.X, gtx.Dp(48)))
-			return a.renderTabs(gtx)
+			// Tabs with exact height
+			return layout.Stack{}.Layout(gtx,
+				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+					gtx.Constraints = layout.Exact(image.Pt(gtx.Constraints.Max.X, gtx.Dp(50)))
+					return a.renderTabs(gtx)
+				}),
+			)
 		}),
-		// Content area that takes remaining space
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			// Content area with remaining space
 			return widget.Border{
 				Color:        a.kit.Colors.Border,
 				Width:        unit.Dp(1),
 				CornerRadius: a.kit.Spacing.Small,
 			}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				// Add padding inside the content area
-				gtx.Constraints.Min = gtx.Constraints.Constrain(gtx.Constraints.Min)
 				return a.renderCurrentTab(gtx)
 			})
 		}),
@@ -186,16 +191,14 @@ func (a *App) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 func (a *App) renderCurrentTab(gtx layout.Context) layout.Dimensions {
-	// Add uniform padding around the content
-	return layout.UniformInset(a.kit.Spacing.Medium).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		// Use a list for scrollable content
-		list := &widget.List{
-			List: layout.List{
-				Axis: layout.Vertical,
-			},
-		}
+	list := &widget.List{
+		List: layout.List{
+			Axis: layout.Vertical,
+		},
+	}
 
-		return list.Layout(gtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
+	return list.Layout(gtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
+		return layout.UniformInset(a.kit.Spacing.Medium).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			switch a.selectedTab {
 			case 0:
 				return a.renderComponentsTab(gtx)
@@ -268,27 +271,38 @@ func (a *App) renderTabs(gtx layout.Context) layout.Dimensions {
 }
 
 func (a *App) renderComponentsTab(gtx layout.Context) layout.Dimensions {
-	// Use a flex layout with consistent spacing between sections
 	return layout.Flex{
-		Axis:      layout.Vertical,
-		Spacing:   layout.Spacing(a.kit.Spacing.Medium),
-		Alignment: layout.Start,
+		Axis: layout.Vertical,
 	}.Layout(gtx,
-		// Notification section - only show if there's a notification
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			if !a.showNotification {
-				return layout.Dimensions{}
-			}
+			// Notification section with minimum height
+			gtx.Constraints.Min.Y = gtx.Dp(50) // Minimum height
 			return a.renderNotificationSection(gtx)
 		}),
-		// Typography section
-		layout.Rigid(a.renderTypographySection),
-		// Buttons section
-		layout.Rigid(a.renderButtonSection),
-		// Progress section
-		layout.Rigid(a.renderProgressSection),
-		// Add some space at the bottom if needed
-		layout.Rigid(layout.Spacer{Height: unit.Dp(16)}.Layout),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return a.kit.Space(a.kit.Spacing.Medium)(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			// Typography section with constrained height
+			gtx.Constraints.Min.Y = gtx.Dp(200) // Reasonable fixed height
+			gtx.Constraints.Max.Y = gtx.Dp(400)
+			return a.renderTypographySection(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return a.kit.Space(a.kit.Spacing.Medium)(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			// Buttons section with minimum height
+			gtx.Constraints.Min.Y = gtx.Dp(100)
+			return a.renderButtonSection(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return a.kit.Space(a.kit.Spacing.Medium)(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			// Progress section
+			return a.renderProgressSection(gtx)
+		}),
 	)
 }
 
@@ -333,55 +347,30 @@ func (a *App) renderButtonSection(gtx layout.Context) layout.Dimensions {
 		// Ensure card has minimum height
 		gtx.Constraints.Min.Y = gtx.Dp(100)
 
-		return layout.Flex{
-			Axis:      layout.Vertical,
-			Spacing:   layout.Spacing(a.kit.Spacing.Medium),
-			Alignment: layout.Start,
-		}.Layout(gtx,
-			// Section title
+		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return a.kit.Text("Buttons", a.kit.Typography.HeadlineSmall, a.kit.Colors.TextPrimary)(gtx)
 			}),
-
-			// First row of buttons
+			layout.Rigid(a.kit.Space(a.kit.Spacing.Medium)),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{
-					Axis:      layout.Horizontal,
-					Spacing:   layout.Spacing(a.kit.Spacing.Medium),
-					Alignment:  layout.Start,
-				}.Layout(gtx,
+				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return a.kit.Button(&a.primaryBtn, "Primary", uikit.ButtonPrimary, uikit.ButtonMedium)(gtx)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return a.kit.Button(&a.secondaryBtn, "Secondary", uikit.ButtonSecondary, uikit.ButtonMedium)(gtx)
 					}),
-				)
-			}),
-
-			// Second row of buttons
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{
-					Axis:      layout.Horizontal,
-					Spacing:   layout.Spacing(a.kit.Spacing.Medium),
-					Alignment:  layout.Start,
-				}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return a.kit.Button(&a.outlineBtn, "Outline", uikit.ButtonOutline, uikit.ButtonMedium)(gtx)
 					}),
+				)
+			}),
+			layout.Rigid(a.kit.Space(a.kit.Spacing.Medium)),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return a.kit.Button(&a.ghostBtn, "Ghost", uikit.ButtonGhost, uikit.ButtonMedium)(gtx)
 					}),
-				)
-			}),
-
-			// Third row of buttons (status variants)
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{
-					Axis:      layout.Horizontal,
-					Spacing:   layout.Spacing(a.kit.Spacing.Medium),
-					Alignment:  layout.Start,
-				}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return a.kit.Button(&a.dangerBtn, "Danger", uikit.ButtonDanger, uikit.ButtonMedium)(gtx)
 					}),
